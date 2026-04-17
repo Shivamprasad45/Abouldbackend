@@ -1,8 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import swaggerUi from 'swagger-ui-express';
 import { env } from './config/env';
-import { swaggerSpec } from './config/swagger';
 import { errorHandler } from './middlewares/errorHandler';
 import logger from './config/logger';
 
@@ -40,10 +38,6 @@ app.use('/api/tasks', tasksRoutes);
 // Nested comments under tasks
 app.use('/api/tasks/:taskId/comments', commentsRoutes);
 app.use('/api/activity', activityRoutes);
-
-// ─── Swagger ──────────────────────────────────────────────────────────────────
-app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-app.get('/api/docs.json', (_req, res) => res.json(swaggerSpec));
 
 // ─── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (_req, res) => res.json({ status: 'ok', timestamp: new Date() }));
