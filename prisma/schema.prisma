@@ -1,0 +1,157 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  MANAGER
+  USER
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  IN_REVIEW
+  DONE
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum ActivityAction {
+  CREATED
+  UPDATED
+  DELETED
+  ASSIGNED
+  STATUS_CHANGED
+  COMMENTED
+  COMMENT_EDITED
+  COMMENT_DELETED
+}
+
+enum EntityType {
+  TASK
+  COMMENT
+  USER
+}
+
+// ─── Models ───────────────────────────────────────────────────────────────────
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  password  String
+  role      Role     @default(USER)
+  avatarUrl String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  refreshTokens RefreshToken[]
+  tasksCreated  Task[]         @relation("TaskCreatedBy")
+  tasksAssigned Task[]         @relation("TaskAssignee")
+  comments      Comment[]
+  activities    ActivityLog[]  @relation("ActivityActor")
+
+  @@index([email])
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  revokedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model Task {
+  id          String       @id @default(uuid())
+  title       String
+  description String?
+  status      TaskStatus   @default(TODO)
+  priority    TaskPriority @default(MEDIUM)
+  dueDate     DateTime?
+  tags        String[]     @default([])
+  position    Float        @default(0)
+  projectId   String?
+
+  assigneeId  String?
+  createdById String
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  assignee    User?     @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  createdBy   User      @relation("TaskCreatedBy", fields: [createdById], references: [id])
+  comments    Comment[]
+  activities  ActivityLog[]
+
+  @@index([status])
+  @@index([assigneeId])
+  @@index([createdById])
+  @@index([priority])
+  @@index([dueDate])
+  @@map("tasks")
+}
+
+model Comment {
+  id        String    @id @default(uuid())
+  body      String
+  taskId    String
+  authorId  String
+  editedAt  DateTime?
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // Relations
+  task   Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  author User @relation(fields: [authorId], references: [id])
+
+  @@index([taskId])
+  @@index([authorId])
+  @@map("comments")
+}
+
+model ActivityLog {
+  id         String         @id @default(uuid())
+  action     ActivityAction
+  entityType EntityType
+  entityId   String
+  metadata   Json?
+  actorId    String
+  taskId     String?
+  createdAt  DateTime       @default(now())
+
+  // Relations
+  actor User  @relation("ActivityActor", fields: [actorId], references: [id])
+  task  Task? @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  @@index([actorId])
+  @@index([entityId])
+  @@index([entityType])
+  @@index([taskId])
+  @@index([createdAt])
+  @@map("activity_logs")
+}
